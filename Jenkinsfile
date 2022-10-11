@@ -5,9 +5,10 @@ pipeline {
     }
     stages {
         stage('Pull from GitHub') {
-            echo 'Pulling from Git...'
-            git branch: 'main', credentialsId: '3fdae877-1a48-4781-93da-5c75f677dc0d',
-                url: 'https://github.com/omega-pasha/tests'
+            steps {
+                git branch: 'main', credentialsId: '3fdae877-1a48-4781-93da-5c75f677dc0d',
+                    url: 'https://github.com/omega-pasha/tests'
+            }
         }
         stage('Deploy') { 
             steps { 
