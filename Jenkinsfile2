@@ -1,0 +1,36 @@
+node {
+    final String TARGET_SERVER = "46.101.237.184" // целевой сервер
+    final String TARGET_PATH = "/etc/bots/binom_checker/" // путь для разворачивания
+
+    stage('Build') {
+        echo 'Pulling from Git...'
+        git branch: 'main', credentialsId: 'ec38729f-5a4c-419b-91ad-c78a6a5a9c49',
+                url: 'git@github.com:CpaMonstr/binom_checker.git'
+   //     telegramSend(message: "Building ", chatId: 111128578)
+    }
+    stage('Deploy') {
+        echo 'Deploying to target server...'
+        def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
+                "--stats --exclude=checker.log --exclude=.* " +             // выводим всю инфу по переносу, исключаем Jenkinsfile и файлы с .
+                "--exclude=checker_data.db --delete-after -e " +                 // исключаем READMEmd, удаляем расходящиеся файлы, запускаем команду
+                "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" + // подключаемся по ssh используя ключ jenkins
+                " root@${TARGET_SERVER}:${TARGET_PATH} > .rsync_out 2>&1") // перенаправление stderr в stdout и запись в файл
+        String output = readFile('.rsync_out')
+        if (statusCode != 0) {
+            echo output
+            currentBuild.result = 'FAILED'
+            telegramSend(message: "<${env.JOB_URL} || ${env.JOB_NAME}> PROBLEM ❌" +
+                    "\n ERROR LOG: ```\n${output}\n```", chatId: 111128578)
+            sh 'touch .error_lock'
+            error 'Rsync failed'
+        } else {
+            if (fileExists('.error_lock')) {
+                telegramSend(message: "<${env.JOB_URL} || ${env.JOB_NAME}> RESOLVED ✅" +
+                        "\n LOG: ```\n${output}\n```", chatId: 111128578)
+                sh 'rm .error_lock'
+            }
+            echo output
+        }
+        sh 'rm .rsync_out'
+    }
+}
