@@ -11,7 +11,6 @@ pipeline {
         }
         stage('Deploy') { 
             steps { 
-                echo 'sucess rsync'
                 script {
                     sh "ls & rsync -avzhr " +
                         "--stats --exclude=.* --delete-after -e " +
