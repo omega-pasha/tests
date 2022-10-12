@@ -13,7 +13,6 @@ node {
                 "--exclude=checker_data.db --delete-after -e " +
                 "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" +
                 " root@${TARGET_SERVER}:${TARGET_PATH} > .rsync_out 2>&1")
-        echo ${statusCode}
         String output = readFile('.rsync_out')
         if (statusCode != 0) {
             echo output
