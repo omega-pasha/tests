@@ -20,5 +20,10 @@ pipeline {
                 }
             }
         }
+        stage('Change owner'){
+           steps {
+               sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@67.205.167.19 chown www-data:www-data /var/www/test"
+           } 
+        }
     }
 }
