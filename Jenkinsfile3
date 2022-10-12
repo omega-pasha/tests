@@ -16,7 +16,10 @@ node {
         String output = readFile('.rsync_out')
         if (statusCode != 0) {
             echo output
-            sh 'touch .error_lock'
+            // currentBuild.result = 'FAILED'
+            // telegramSend(message: "<${env.JOB_URL} || ${env.JOB_NAME}> PROBLEM ❌" +
+            //         "\n ERROR LOG: ```\n${output}\n```", chatId: 111128578)
+            // sh 'touch .error_lock'
             error 'Rsync failed'
         } else {
             if (fileExists('.error_lock')) {
@@ -28,6 +31,6 @@ node {
     }
     stage('Change owner') {
         echo 'Change owner on remote server'
-        sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@${TARGET_SERVER} chown www-data:www-data /var/www/test"
+        sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@${TARGET_SERVER} chown -R www-data:www-data /var/www/${env.JOB_NAME}"
     }
 }
