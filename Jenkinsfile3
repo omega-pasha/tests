@@ -12,7 +12,7 @@ node {
             def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
                 "--stats --exclude=checker.log --exclude=.* " + 
                 "--exclude=checker_data.db --delete-after -e " +
-                "'ssh -i ${env.JENKINS_HOME}/id_r' ${env.WORKSPACE}/" +
+                "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" +
                 " root@${SRV_IP}:${TARGET_PATH} > .rsync_out 2>&1")
             String output = readFile('.rsync_out')
             if (statusCode != 0) {
