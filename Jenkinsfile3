@@ -1,36 +1,38 @@
 node {
-    final String TARGET_SERVER = "67.205.167.19"
-    final String TARGET_PATH = "/var/www/${env.JOB_NAME}"
+    String[] TARGET_SERVER = ['67.205.167.19', '217.78.239.7']
+    String TARGET_PATH = "/var/www/${env.JOB_NAME}"
 
     stage('Build') {
         echo 'Pulling from Git...'
         git branch: 'main', credentialsId: '3fdae877-1a48-4781-93da-5c75f677dc0d', url: 'https://github.com/omega-pasha/tests'
     }
     stage('Deploy') {
-        echo 'Deploying to target server...'
-        def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
+        for(String SRV_IP in TARGET_SERVER){
+            println('Deploying to ' + ${SRV_IP})
+            def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
                 "--stats --exclude=checker.log --exclude=.* " + 
                 "--exclude=checker_data.db --delete-after -e " +
                 "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" +
-                " root@${TARGET_SERVER}:${TARGET_PATH} > .rsync_out 2>&1")
-        String output = readFile('.rsync_out')
-        if (statusCode != 0) {
-            echo output
-            // currentBuild.result = 'FAILED'
-            // telegramSend(message: "<${env.JOB_URL} || ${env.JOB_NAME}> PROBLEM ❌" +
-            //         "\n ERROR LOG: ```\n${output}\n```", chatId: 111128578)
-            // sh 'touch .error_lock'
-            error 'Rsync failed'
-        } else {
-            if (fileExists('.error_lock')) {
-                sh 'rm .error_lock'
+                " root@${SRV_IP}:${TARGET_PATH} > .rsync_out 2>&1")
+            String output = readFile('.rsync_out')
+            if (statusCode != 0) {
+                echo output
+                currentBuild.result = 'FAILED'
+                //sh 'python3 $JENKINS_HOME/scripts/telegram_notifier.py ${env.JOB_NAME} ${env.BUILD_NUMBER} 606151623'
+                error 'Rsync failed'
+            } else {
+                if (fileExists('.error_lock')) {
+                    sh 'rm .error_lock'
+                }
+             echo output
             }
-            echo output
         }
         sh 'rm .rsync_out'
     }
     stage('Change owner') {
-        echo 'Change owner on remote server'
-        sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@${TARGET_SERVER} chown -R www-data:www-data /var/www/${env.JOB_NAME}"
+        for(String SRV_IP in TARGET_SERVER){
+            echo 'Change owner on ${SRV_IP}'
+            sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@${SRV_IP} chown -R www-data:www-data /var/www/${env.JOB_NAME}"
+        }
     }
 }
