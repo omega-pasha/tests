@@ -1,5 +1,5 @@
 node {
-    String[] TARGET_SERVER = ['67.205.167.19', '217.78.239.7']
+    String[] TARGET_SERVER = ['67.205.167.19', '167.172.140.221']
     String TARGET_PATH = "/var/www/${env.JOB_NAME}"
 
     stage('Build') {
@@ -8,30 +8,26 @@ node {
     }
     stage('Deploy') {
         for(String SRV_IP in TARGET_SERVER){
-            println('Deploying to ' + ${SRV_IP})
+            println('Deploying to ' + SRV_IP)
             def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
                 "--stats --exclude=checker.log --exclude=.* " + 
                 "--exclude=checker_data.db --delete-after -e " +
-                "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" +
+                "'ssh -i ${env.JENKINS_HOME}/id_r' ${env.WORKSPACE}/" +
                 " root@${SRV_IP}:${TARGET_PATH} > .rsync_out 2>&1")
             String output = readFile('.rsync_out')
             if (statusCode != 0) {
                 echo output
                 currentBuild.result = 'FAILED'
-                //sh 'python3 $JENKINS_HOME/scripts/telegram_notifier.py ${env.JOB_NAME} ${env.BUILD_NUMBER} 606151623'
+                sh "python3 ${env.JENKINS_HOME}/scripts/telegram_notifier_test.py ${env.JOB_NAME} ${env.BUILD_NUMBER} -1001776767555"
                 error 'Rsync failed'
             } else {
-                if (fileExists('.error_lock')) {
-                    sh 'rm .error_lock'
+                sh 'rm .rsync_out'
                 }
-             echo output
             }
         }
-        sh 'rm .rsync_out'
-    }
     stage('Change owner') {
         for(String SRV_IP in TARGET_SERVER){
-            echo 'Change owner on ${SRV_IP}'
+            println('Change owner on ' + SRV_IP)
             sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@${SRV_IP} chown -R www-data:www-data /var/www/${env.JOB_NAME}"
         }
     }
