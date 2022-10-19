@@ -1,19 +1,18 @@
 node {
-    String[] TARGET_SERVER = ['67.205.167.19', '167.172.140.221']
-    String TARGET_PATH = "/var/www/${env.JOB_NAME}"
-
+    private Map TARGET_SERVER = [
+        "67.205.167.19": '/var/www/pipeline_more_test',
+        "167.172.140.22": '/var/www/pipeline_more_t'
+    ]
     stage('Build') {
         echo 'Pulling from Git...'
         git branch: 'main', credentialsId: '3fdae877-1a48-4781-93da-5c75f677dc0d', url: 'https://github.com/omega-pasha/tests'
     }
     stage('Deploy') {
-        for(String SRV_IP in TARGET_SERVER){
-            println('Deploying to ' + SRV_IP)
-            def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
-                "--stats --exclude=checker.log --exclude=.* " + 
-                "--exclude=checker_data.db --delete-after -e " +
-                "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" +
-                " root@${SRV_IP}:${TARGET_PATH} > .rsync_out 2>&1")
+        TARGET_SERVER.each{key, val -> def statusCode = sh(returnStatus: true, script: "rsync -avzhr " +
+            "--stats --exclude=checker.log --exclude=.* " + 
+            "--exclude=checker_data.db --delete-after -e " +
+            "'ssh -i ${env.JENKINS_HOME}/id_rsa' ${env.WORKSPACE}/" +
+            " root@$key:$val > .rsync_out 2>&1")
             String output = readFile('.rsync_out')
             if (statusCode != 0) {
                 echo output
@@ -21,14 +20,12 @@ node {
                 sh "python3 ${env.JENKINS_HOME}/scripts/telegram_notifier_test.py ${env.JOB_NAME} ${env.BUILD_NUMBER} -1001776767555"
                 error 'Rsync failed'
             } else {
+                println "OK Deploy to $key on a $val"
                 sh 'rm .rsync_out'
-                }
             }
         }
+    }
     stage('Change owner') {
-        for(String SRV_IP in TARGET_SERVER){
-            println('Change owner on ' + SRV_IP)
-            sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@${SRV_IP} chown -R www-data:www-data /var/www/${env.JOB_NAME}"
-        }
+        TARGET_SERVER.each{entry -> sh "ssh -i '${env.JENKINS_HOME}/id_rsa' root@$entry.key chown -R www-data:www-data $entry.value"}
     }
 }
